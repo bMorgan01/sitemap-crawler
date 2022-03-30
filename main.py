@@ -60,6 +60,8 @@ def cmp(p1, p2):
 
 
 def main():
+    print("Reading conf...")
+
     conf = []
     with open('crawl.conf', 'r') as file:
         for line in file.readlines():
@@ -74,14 +76,17 @@ def main():
 
     ignores = conf[3::]
 
+    print("Crawling site...")
     links = spider(prefix, domain, ignores)
     date = datetime.datetime.utcnow()
 
     existed = exists(path)
     oldpath = path
     if existed:
+        print("Sitemap already exists, creating temp...")
         path = "newmap.xml"
 
+    print("Writing to target file...")
     out = open(path, 'w')
     out.write("<!--\n")
     out.write("\tSitemap generator by Ben Morgan - www.benrmorgan.com\n")
@@ -115,10 +120,14 @@ def main():
     out.close()
 
     if existed and not cmp(oldpath, path):
+        print("Creating old sitemap backup...")
         move(oldpath, oldpath + "-old")
+        print("Overwriting old sitemap with new one...")
         move(path, oldpath)
-    else:
+    elif existed:
+        print("Sitemaps are the same, removing temp...")
         os.remove(path)
 
+    print("Done.")
 
 main()
