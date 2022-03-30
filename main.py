@@ -1,6 +1,10 @@
 import datetime
+import os
+
 import bs4
 from urllib.request import Request, urlopen
+from os.path import exists
+from shutil import move
 
 
 def spider(prefix, domain, exclude):
@@ -37,6 +41,24 @@ def spider_rec(links, prefix, domain, postfix, exclude):
     return links
 
 
+def cmp(p1, p2):
+    with open(p1, 'r') as f1:
+        with open(p2, 'r') as f2:
+            l1 = f1.readlines()
+            l2 = f2.readlines()
+            not_matched = []
+
+            if len(l1) == len(l2):
+                for i in range(len(l1)):
+                    if l1[i] != l2[i]:
+                        if "<lastmod>" not in l1[i]:
+                            return False
+            else:
+                return False
+
+    return True
+
+
 def main():
     conf = []
     with open('crawl.conf', 'r') as file:
@@ -48,13 +70,19 @@ def main():
 
     domain = conf[0]
     prefix = conf[1]
+    path = conf[2]
 
-    ignores = conf[2::]
+    ignores = conf[3::]
 
     links = spider(prefix, domain, ignores)
     date = datetime.datetime.utcnow()
 
-    out = open("sitemap.xml", 'w')
+    existed = exists(path)
+    oldpath = path
+    if existed:
+        path = "newmap.xml"
+
+    out = open(path, 'w')
     out.write("<!--\n")
     out.write("\tSitemap generator by Ben Morgan - www.benrmorgan.com\n")
     out.write("-->\n")
@@ -85,6 +113,12 @@ def main():
 
     out.write("</urlset>\n")
     out.close()
+
+    if existed and not cmp(oldpath, path):
+        move(oldpath, oldpath + "-old")
+        move(path, oldpath)
+    else:
+        os.remove(path)
 
 
 main()
