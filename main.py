@@ -88,11 +88,11 @@ def main():
 
     print("Writing to target file...")
     out = open(path, 'w')
+    out.write("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n")
     out.write("<!--\n")
     out.write("\tSitemap generator by Ben Morgan - www.benrmorgan.com\n")
     out.write("-->\n")
-    out.write(
-        "<urlset xsi:schemaLocation=\"http://www.sitemaps.org/schemas/sitemap/0.9 http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd\">\n")
+    out.write("<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">\n")
 
     sorted_links = dict(sorted(links.items(), key=lambda item: item[1], reverse=True))
 
