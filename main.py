@@ -60,8 +60,7 @@ def cmp(p1, p2):
             if len(l1) == len(l2):
                 for i in range(len(l1)):
                     if l1[i] != l2[i]:
-                        if "<lastmod>" not in l1[i]:
-                            return False
+                        return False
             else:
                 return False
 
@@ -87,7 +86,7 @@ def main():
         with open(checksums_path, 'r') as checksums_file:
             for line in checksums_file.readlines():
                 thirds = line.split()
-                checksums[thirds[0]] = (thirds[1:])
+                checksums[thirds[0]] = thirds[1:]
     except FileNotFoundError:
         print("No checksums file found at path, new file will be created.")
 
@@ -126,7 +125,7 @@ def main():
     different_count = 0
     for l in ordered:
         lastmod = date.strftime("%Y-%m-%dT%H:%M:%S+00:00")
-        if l in checksums.keys() and checksums[l[0]] == new_checksums[l[0]]:
+        if l[0] in checksums.keys() and checksums[l[0]][0] == new_checksums[l[0]]:
             lastmod = checksums[l[0]][1]
             different_count += 1
         
