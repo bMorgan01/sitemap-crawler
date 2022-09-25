@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-from calendar import different_locale
 import datetime
 import os
+from urllib.parse import urlparse, urlunparse, urljoin
+
 import bs4
 from urllib.request import Request, urlopen
 from os.path import exists
@@ -15,40 +16,57 @@ def get_page_hash(text: str):
 
     return md5(text.encode('utf-8')).hexdigest()
 
-def spider(prefix, domain, exclude):
-    return spider_rec(dict(), dict(), prefix, domain, "/", exclude)
+
+def spider(target, exclude):
+    parsed_target = urlparse(target)
+    return spider_rec(dict(), dict(), target, parsed_target, exclude)
 
 
-def spider_rec(links, checksums, prefix, domain, postfix, exclude):
-    req = Request(prefix + domain + postfix)
-    html_page = urlopen(req)
+def spider_rec(links, checksums, current_href, base_parse, exclude):
+    target_url = urlunparse(base_parse)
+    parse_result = urlparse(urljoin(target_url, current_href))
+    req = Request(urlunparse(parse_result))
 
-    soup = bs4.BeautifulSoup(html_page, "lxml")
+    postfix = parse_result.path
+    if parse_result.query:
+        postfix += "?" + parse_result.query
 
-    checksums[postfix] = get_page_hash(soup.getText())
-    links[postfix] = 1
+    if len(postfix) == 0:
+        postfix = "/"
 
-    for link in soup.findAll('a'):
-        href = link.get('href')
-        if "mailto:" not in href and (domain in href or href[0] == '/'):
-            if href not in links.keys():
-                found = False
-                for d in exclude:
-                    if d in href:
-                        found = True
-                        break
+    if parse_result.hostname == base_parse.hostname:
+        html_page = urlopen(req)
 
-                if found:
-                    continue
+        soup = bs4.BeautifulSoup(html_page, "lxml")
 
-                href = href.replace(" ", "%20")
+        checksums[postfix] = get_page_hash(soup.getText())
+        links[postfix] = 1
 
-                if domain in href:
-                    spider_rec(links, checksums, "", "", href, exclude)
+        for link in soup.findAll('a'):
+            href = link.get('href')
+            href = href.replace(" ", "%20")
+
+            if "mailto:" not in href:
+                if not urlparse(href).hostname:
+                    href_parse = urlparse(urljoin(target_url, href))
+                    href = href_parse.path
+
+                    if href_parse.query:
+                        href += "?" + href_parse.query
+
+                if href not in links.keys():
+                    found = False
+                    for d in exclude:
+                        if d in href:
+                            found = True
+                            break
+
+                    if found:
+                        continue
+
+                    spider_rec(links, checksums, href, base_parse, exclude)
                 else:
-                    spider_rec(links, checksums, prefix, domain, href, exclude)
-            else:
-                links[href] += 1
+                    links[href] += 1
     return links, checksums
 
 
@@ -74,8 +92,7 @@ def main():
     config.read('crawl.conf')
     config = config['Config']
 
-    domain = config['domain']
-    prefix = config['prefix']
+    target = config['site']
     path = config['target']
     checksums_path = config['checksums']
 
@@ -91,7 +108,7 @@ def main():
         print("No checksums file found at path, new file will be created.")
 
     print("Crawling site...")
-    links, new_checksums = spider(prefix, domain, ignores)
+    links, new_checksums = spider(target, ignores)
     date = datetime.datetime.utcnow()
 
     existed = exists(path)
@@ -132,7 +149,7 @@ def main():
         checksums_out.write(f"{l[0]} {new_checksums[l[0]]} {lastmod}\n")
         
         if l[0] == '/':
-            l = prefix + domain + l[0]
+            l = target + l[0]
 
         out.write("\t<url>\n")
         out.write("\t\t<loc>" + l[0] + "</loc>\n")
